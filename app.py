@@ -258,10 +258,11 @@ def make_appendix_cover():
     items = []
     items.append(Spacer(1, 55*mm))
     items.append(HRFlowable(width="100%", thickness=4, color=BLUE))
+    items.append(Spacer(1, 22*mm))
+    items.append(Paragraph("APPENDIX", S('at', fontSize=42, fontName='Helvetica-Bold', textColor=BLUE, alignment=TA_CENTER, spaceAfter=0)))
     items.append(Spacer(1, 14*mm))
-    items.append(Paragraph("APPENDIX", S('at', fontSize=42, fontName='Helvetica-Bold', textColor=BLUE, alignment=TA_CENTER, spaceAfter=6)))
-    items.append(Paragraph("Survey Plans and Supporting Documents", S('as', fontSize=14, fontName='Helvetica', textColor=MUTED, alignment=TA_CENTER)))
-    items.append(Spacer(1, 14*mm))
+    items.append(Paragraph("Survey Plans and Supporting Documents", S('as', fontSize=14, fontName='Helvetica', textColor=MUTED, alignment=TA_CENTER, spaceAfter=0)))
+    items.append(Spacer(1, 22*mm))
     items.append(HRFlowable(width="100%", thickness=4, color=BLUE))
     items.append(PageBreak())
     return items
@@ -284,13 +285,14 @@ def make_appendix_header(entry_num, entry):
         ('TOPPADDING',(0,0),(-1,-1),10),('BOTTOMPADDING',(0,0),(-1,-1),10),
     ]))
     items.append(header)
-    items.append(Spacer(1, 4*mm))
+    items.append(Spacer(1, 2*mm))
 
     # Sub line: Job Type  ·  Vol. Fol.
     items.append(Paragraph(
-        f"{job_type}  \u00b7  {title_ref}",
-        S('ameta', fontSize=10, fontName='Helvetica', textColor=MUTED, spaceAfter=5)
+        f"{job_type}  ·  {title_ref}",
+        S('ameta', fontSize=10, fontName='Helvetica', textColor=MUTED, spaceAfter=0)
     ))
+    items.append(Spacer(1, 2*mm))
     items.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
     items.append(Spacer(1, 6*mm))
     return items
