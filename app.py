@@ -132,11 +132,8 @@ def make_cover(student_name, principal_name, office, period, num_entries, total_
     story.append(PageBreak())
     return story
 
-def make_tally(entries):
-    story = []
-    story.append(Paragraph("TALLY OF HOURS", S('th', fontSize=9, fontName='Helvetica-Bold', textColor=BLUE, spaceBefore=10, spaceAfter=5, letterSpacing=1.5)))
-    story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
-    story.append(Spacer(1, 4*mm))
+def make_tally_table(entries_subset, label=None):
+    """Build a single tally table for a subset of entries"""
     cat_map = {
         "Cadastral Survey (Boundary Reopening)":"Cadastral",
         "Cadastral Survey (Boundary Survey)":"Cadastral",
@@ -145,12 +142,16 @@ def make_tally(entries):
         "Subdivision":"Subdivision","Strata (Plan Preparation)":"Strata","Plan Preparation":"Cadastral",
     }
     cat_totals = {}
-    for e in entries:
+    for e in entries_subset:
         cat = cat_map.get(e.get('job_type',''), e.get('job_type',''))
         hrs = float(e.get('total_hours',0) or 0)
         cat_totals[cat] = cat_totals.get(cat,0) + hrs
-    grand = sum(float(e.get('total_hours',0) or 0) for e in entries)
+    grand = sum(float(e.get('total_hours',0) or 0) for e in entries_subset)
     def fh(n): return int(n) if n==int(n) else round(n,1)
+
+    items = []
+    if label:
+        items.append(Paragraph(label, S('tlbl', fontSize=10, fontName='Helvetica-Bold', textColor=BLUE, spaceBefore=8, spaceAfter=4)))
     data = [['Nature of Work','Total Hours']]
     for cat,hrs in cat_totals.items():
         data.append([cat, str(fh(hrs))])
@@ -165,7 +166,36 @@ def make_tally(entries):
         ('ROWBACKGROUNDS',(0,1),(-1,-2),[WHITE,LIGHT_GREY]),
         ('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),10),
     ]))
-    story.append(t)
+    items.append(t)
+    items.append(Spacer(1, 6*mm))
+    return items
+
+def make_tally(entries):
+    story = []
+    story.append(Paragraph("TALLY OF HOURS", S('th', fontSize=9, fontName='Helvetica-Bold', textColor=BLUE, spaceBefore=10, spaceAfter=5, letterSpacing=1.5)))
+    story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
+    story.append(Spacer(1, 4*mm))
+
+    # Group entries by period
+    from collections import defaultdict, OrderedDict
+    period_entries = OrderedDict()
+    for e in entries:
+        lbl = get_period_label(e.get('date',''))
+        if lbl:
+            if lbl not in period_entries:
+                period_entries[lbl] = []
+            period_entries[lbl].append(e)
+
+    # If multiple periods, show per-period tallies
+    if len(period_entries) > 1:
+        for period_lbl, p_entries in period_entries.items():
+            story += make_tally_table(p_entries, label=f"Period: {period_lbl}")
+        story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
+        story.append(Spacer(1, 4*mm))
+        story += make_tally_table(entries, label="Combined Total")
+    else:
+        story += make_tally_table(entries)
+
     story.append(PageBreak())
     return story
 
