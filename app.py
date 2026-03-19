@@ -369,6 +369,9 @@ def generate_pdf():
 
             pdf_attachments = []
 
+            # Header height estimate: navy bar ~12mm + spacer 2mm + subline 5mm + spacer 2mm + rule 1mm + spacer 6mm = ~28mm
+            header_h = 28*mm
+
             for entry_num_a, entry in entries_with_attachments:
                 attachments = entry.get('attachments', []) or []
                 for path in attachments:
@@ -378,12 +381,13 @@ def generate_pdf():
                     filename = path.split('/')[-1]
 
                     if is_image(path):
-                        # Add header then image
+                        # Header + image on same page, image constrained to space below header
+                        img_avail_h = page_h - header_h
                         story += make_appendix_header(entry_num_a, entry)
                         try:
                             img_buf = io.BytesIO(att_data)
                             img = Image(img_buf)
-                            ratio = min(page_w / img.drawWidth, page_h / img.drawHeight)
+                            ratio = min(page_w / img.drawWidth, img_avail_h / img.drawHeight)
                             img.drawWidth  *= ratio
                             img.drawHeight *= ratio
                             story.append(Table([[img]], colWidths=[page_w], style=TableStyle([
@@ -418,27 +422,21 @@ def generate_pdf():
 
             for entry_num_a, entry, pdf_data in pdf_attachments:
                 try:
-                    # Build a small header page for this PDF
+                    # Build a header-only page to insert BEFORE the plan pages
                     hdr_buf = io.BytesIO()
                     hdr_doc = SimpleDocTemplate(hdr_buf, pagesize=A4,
                         leftMargin=20*mm, rightMargin=20*mm,
                         topMargin=20*mm, bottomMargin=22*mm)
-                    hdr_story = make_appendix_header(entry_num_a, entry)
-                    hdr_doc.build(hdr_story)
+                    hdr_doc.build(make_appendix_header(entry_num_a, entry))
                     hdr_buf.seek(0)
                     hdr_reader = PdfReader(hdr_buf)
-                    # Get the header page
-                    hdr_page = hdr_reader.pages[0]
-
-                    # Merge header onto first page of attachment PDF
+                    # Add header page first
+                    writer.add_page(hdr_reader.pages[0])
+                    # Then add all plan pages as-is, full page, no overlap
                     att_reader = PdfReader(io.BytesIO(pdf_data))
-                    for i, att_page in enumerate(att_reader.pages):
-                        if i == 0:
-                            # Overlay header on first page
-                            att_page.merge_page(hdr_page)
+                    for att_page in att_reader.pages:
                         writer.add_page(att_page)
                 except Exception as pe:
-                    # Just add PDF pages without header if merge fails
                     try:
                         att_reader = PdfReader(io.BytesIO(pdf_data))
                         for att_page in att_reader.pages:
