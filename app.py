@@ -52,7 +52,6 @@ def is_image(path):
     return path.lower().split('?')[0].endswith(('.jpg','.jpeg','.png','.gif','.webp'))
 
 def fetch_attachment(path):
-    """Fetch attachment from Supabase storage, return bytes or None"""
     try:
         url = f"{SUPABASE_URL}/storage/v1/object/public/{path}"
         r = requests.get(url, timeout=15,
@@ -77,7 +76,6 @@ def make_cover(student_name, principal_name, office, period, num_entries, total_
     story.append(Spacer(1, 10*mm))
     story.append(HRFlowable(width="35%", thickness=1.5, color=BLUE, hAlign='CENTER'))
     story.append(Spacer(1, 10*mm))
-
     rows = [
         ("Student Surveyor's Name:", student_name),
         ("Principal's Name:",        principal_name),
@@ -101,7 +99,6 @@ def make_cover(student_name, principal_name, office, period, num_entries, total_
         ('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0),
     ])))
     story.append(Spacer(1, 10*mm))
-
     decl_rows = [
         [Paragraph("Principal's Declaration", S('dh', fontSize=11, fontName='Helvetica-Bold', textColor=BLUE)), '', ''],
         [Paragraph("I confirm that the entries in this Diary and Logbook are an accurate record of the candidate's work.",
@@ -223,16 +220,16 @@ def make_entry(entry, num, total):
     header.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),LIGHT_BLUE),('LEFTPADDING',(0,0),(-1,-1),10),('RIGHTPADDING',(0,0),(-1,-1),10),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),4),('LINEBELOW',(0,0),(-1,-1),1.5,BLUE)]))
     items.append(header)
     items.append(Paragraph(prop_desc, S('etl', fontSize=13, fontName='Helvetica-Bold', textColor=TEXT, spaceAfter=3)))
-    items.append(Paragraph(f"{parish}  ·  {fmt_date(date)}  ·  {title_ref}  ·  Parcel: {parcel}", S('em', fontSize=9, fontName='Helvetica', textColor=MUTED, spaceAfter=5)))
+    items.append(Paragraph(f"{parish}  \u00b7  {fmt_date(date)}  \u00b7  {title_ref}  \u00b7  Parcel: {parcel}", S('em', fontSize=9, fontName='Helvetica', textColor=MUTED, spaceAfter=5)))
     items.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
     items.append(Spacer(1,3*mm))
     left = []
     left.append(Paragraph("NATURE OF PROFESSIONAL WORK", S('nl', fontSize=8, fontName='Helvetica-Bold', textColor=MUTED, spaceAfter=2)))
     for n in nature:
-        left.append(Paragraph(f"– {n}", S('ni', fontSize=9, fontName='Helvetica', textColor=TEXT, leftIndent=8, spaceAfter=2, leading=13)))
+        left.append(Paragraph(f"\u2013 {n}", S('ni', fontSize=9, fontName='Helvetica', textColor=TEXT, leftIndent=8, spaceAfter=2, leading=13)))
     left.append(Spacer(1,3*mm))
     left.append(Paragraph("STUDENT SURVEYOR'S NOTES", S('snl', fontSize=8, fontName='Helvetica-Bold', textColor=MUTED, spaceAfter=2)))
-    left.append(Paragraph(notes if notes else '—', S('nb', fontSize=9, fontName='Helvetica', textColor=TEXT, spaceAfter=3, leading=13)))
+    left.append(Paragraph(notes if notes else '\u2014', S('nb', fontSize=9, fontName='Helvetica', textColor=TEXT, spaceAfter=3, leading=13)))
     right = []
     right.append(Paragraph("WORK HOURS", S('whl', fontSize=8, fontName='Helvetica-Bold', textColor=MUTED, spaceAfter=2)))
     for row in hour_rows:
@@ -258,40 +255,45 @@ def make_entry(entry, num, total):
     return KeepTogether(items)
 
 def make_appendix_cover():
-    """Title page for the appendix"""
     items = []
-    items.append(Spacer(1, 60*mm))
+    items.append(Spacer(1, 55*mm))
     items.append(HRFlowable(width="100%", thickness=4, color=BLUE))
     items.append(Spacer(1, 14*mm))
-    items.append(Paragraph("APPENDIX", S('at', fontSize=36, fontName='Helvetica-Bold', textColor=BLUE, alignment=TA_CENTER, spaceAfter=6)))
-    items.append(Paragraph("Survey Plans & Supporting Documents", S('as', fontSize=14, fontName='Helvetica', textColor=MUTED, alignment=TA_CENTER, spaceAfter=0)))
+    items.append(Paragraph("APPENDIX", S('at', fontSize=42, fontName='Helvetica-Bold', textColor=BLUE, alignment=TA_CENTER, spaceAfter=6)))
+    items.append(Paragraph("Survey Plans and Supporting Documents", S('as', fontSize=14, fontName='Helvetica', textColor=MUTED, alignment=TA_CENTER)))
     items.append(Spacer(1, 14*mm))
     items.append(HRFlowable(width="100%", thickness=4, color=BLUE))
     items.append(PageBreak())
     return items
 
-def make_appendix_pages(entries_with_attachments):
-    """Generate appendix pages - one page per attachment"""
-    # First build the main logbook PDF pages, then we'll merge PDFs after
-    image_pages = []  # (entry_info, image_bytes, filename) for images
-    pdf_attachments = []  # (entry_info, pdf_bytes, filename) for PDFs
+def make_appendix_header(entry_num, entry):
+    """Navy header bar for each appendix page"""
+    job_type  = entry.get('job_type', '')
+    prop_desc = entry.get('property_desc', '—')
+    title_ref = entry.get('title_ref', '—')
+    items = []
 
-    for entry_num, entry in entries_with_attachments:
-        attachments = entry.get('attachments', []) or []
-        if not attachments:
-            continue
-        entry_label = f"Entry {entry_num} – {entry.get('property_desc','—')} ({fmt_date(entry.get('date',''))})"
-        for path in attachments:
-            data = fetch_attachment(path)
-            if not data:
-                continue
-            filename = path.split('/')[-1]
-            if is_image(path):
-                image_pages.append((entry_label, data, filename))
-            elif path.lower().endswith('.pdf'):
-                pdf_attachments.append((entry_label, data, filename))
+    # Navy bar: Entry No. X  |  Property Description
+    header = Table([[
+        Paragraph(f"Entry No. {entry_num}", S('ahl', fontSize=11, fontName='Helvetica-Bold', textColor=WHITE)),
+        Paragraph(prop_desc, S('ahr', fontSize=11, fontName='Helvetica-Bold', textColor=WHITE, alignment=TA_RIGHT))
+    ]], colWidths=[85*mm, 85*mm])
+    header.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,-1),BLUE),
+        ('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),
+        ('TOPPADDING',(0,0),(-1,-1),10),('BOTTOMPADDING',(0,0),(-1,-1),10),
+    ]))
+    items.append(header)
+    items.append(Spacer(1, 4*mm))
 
-    return image_pages, pdf_attachments
+    # Sub line: Job Type  ·  Vol. Fol.
+    items.append(Paragraph(
+        f"{job_type}  \u00b7  {title_ref}",
+        S('ameta', fontSize=10, fontName='Helvetica', textColor=MUTED, spaceAfter=5)
+    ))
+    items.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
+    items.append(Spacer(1, 6*mm))
+    return items
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -315,14 +317,13 @@ def generate_pdf():
         total_hours = sum(float(e.get('total_hours',0) or 0) for e in entries)
         def fh(n): return int(n) if n==int(n) else round(n,1)
         th_fmt = fh(total_hours)
-
         pr_by_label = {r.get('period_label',''): r for r in progress_reports}
 
         def add_page_number(canvas, doc):
             canvas.saveState()
             canvas.setFont('Helvetica', 8)
             canvas.setFillColor(MUTED)
-            canvas.drawString(20*mm, 12*mm, f"{student_name}  ·  Surveyor's Logbook  ·  {period}")
+            canvas.drawString(20*mm, 12*mm, f"{student_name}  \u00b7  Surveyor's Logbook  \u00b7  {period}")
             canvas.drawRightString(190*mm, 12*mm, f"Page {doc.page}")
             canvas.setStrokeColor(BORDER)
             canvas.setLineWidth(0.5)
@@ -354,38 +355,47 @@ def generate_pdf():
             if e.get('attachments'):
                 entries_with_attachments.append((entry_num, e))
 
-        # ── APPENDIX ──
-        has_attachments = any(e.get('attachments') for e in entries)
+        # APPENDIX
+        has_attachments = bool(entries_with_attachments)
         if has_attachments:
+            story.append(PageBreak())
             story += make_appendix_cover()
 
-            # Collect image and pdf attachments
-            image_pages, pdf_attachments = make_appendix_pages(entries_with_attachments)
+            # Page dimensions for scaling
+            page_w = A4[0] - 40*mm   # usable width
+            page_h = A4[1] - 60*mm   # usable height (leaving room for header)
 
-            # Add image pages to ReportLab story
-            page_w = A4[0] - 40*mm
-            page_h = A4[1] - 50*mm
+            pdf_attachments = []
 
-            for entry_label, img_data, filename in image_pages:
-                try:
-                    img_buf = io.BytesIO(img_data)
-                    img = Image(img_buf)
-                    # Scale to fit page while maintaining aspect ratio
-                    ratio = min(page_w / img.drawWidth, page_h / img.drawHeight)
-                    img.drawWidth  *= ratio
-                    img.drawHeight *= ratio
+            for entry_num_a, entry in entries_with_attachments:
+                attachments = entry.get('attachments', []) or []
+                for path in attachments:
+                    att_data = fetch_attachment(path)
+                    if not att_data:
+                        continue
+                    filename = path.split('/')[-1]
 
-                    story.append(Paragraph(entry_label, S('apl', fontSize=9, fontName='Helvetica-Bold', textColor=MUTED, spaceAfter=4)))
-                    story.append(Paragraph(filename, S('apf', fontSize=8, fontName='Helvetica', textColor=MUTED, spaceAfter=8)))
-                    story.append(Table([[img]], colWidths=[page_w], style=TableStyle([
-                        ('ALIGN',(0,0),(-1,-1),'CENTER'),
-                        ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0),
-                        ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),
-                    ])))
-                    story.append(PageBreak())
-                except Exception as img_err:
-                    story.append(Paragraph(f"[Could not embed image: {filename}]", S('err', fontSize=9, fontName='Helvetica', textColor=MUTED)))
-                    story.append(PageBreak())
+                    if is_image(path):
+                        # Add header then image
+                        story += make_appendix_header(entry_num_a, entry)
+                        try:
+                            img_buf = io.BytesIO(att_data)
+                            img = Image(img_buf)
+                            ratio = min(page_w / img.drawWidth, page_h / img.drawHeight)
+                            img.drawWidth  *= ratio
+                            img.drawHeight *= ratio
+                            story.append(Table([[img]], colWidths=[page_w], style=TableStyle([
+                                ('ALIGN',(0,0),(-1,-1),'CENTER'),
+                                ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0),
+                                ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),
+                            ])))
+                        except:
+                            story.append(Paragraph(f"[Could not embed: {filename}]",
+                                S('err', fontSize=9, fontName='Helvetica', textColor=MUTED)))
+                        story.append(PageBreak())
+
+                    elif path.lower().endswith('.pdf'):
+                        pdf_attachments.append((entry_num_a, entry, att_data))
 
         # Build main PDF
         main_buf = io.BytesIO()
@@ -397,23 +407,42 @@ def generate_pdf():
         doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
         main_buf.seek(0)
 
-        # If there are PDF attachments, merge them in
+        # Merge PDF attachments
         if has_attachments and pdf_attachments:
             writer = PdfWriter()
-            # Add all pages from main PDF
             main_reader = PdfReader(main_buf)
             for page in main_reader.pages:
                 writer.add_page(page)
 
-            # Add each PDF attachment
-            for entry_label, pdf_data, filename in pdf_attachments:
+            for entry_num_a, entry, pdf_data in pdf_attachments:
                 try:
-                    pdf_buf = io.BytesIO(pdf_data)
-                    att_reader = PdfReader(pdf_buf)
-                    for page in att_reader.pages:
-                        writer.add_page(page)
-                except Exception as pdf_err:
-                    pass  # skip unreadable PDFs silently
+                    # Build a small header page for this PDF
+                    hdr_buf = io.BytesIO()
+                    hdr_doc = SimpleDocTemplate(hdr_buf, pagesize=A4,
+                        leftMargin=20*mm, rightMargin=20*mm,
+                        topMargin=20*mm, bottomMargin=22*mm)
+                    hdr_story = make_appendix_header(entry_num_a, entry)
+                    hdr_doc.build(hdr_story)
+                    hdr_buf.seek(0)
+                    hdr_reader = PdfReader(hdr_buf)
+                    # Get the header page
+                    hdr_page = hdr_reader.pages[0]
+
+                    # Merge header onto first page of attachment PDF
+                    att_reader = PdfReader(io.BytesIO(pdf_data))
+                    for i, att_page in enumerate(att_reader.pages):
+                        if i == 0:
+                            # Overlay header on first page
+                            att_page.merge_page(hdr_page)
+                        writer.add_page(att_page)
+                except Exception as pe:
+                    # Just add PDF pages without header if merge fails
+                    try:
+                        att_reader = PdfReader(io.BytesIO(pdf_data))
+                        for att_page in att_reader.pages:
+                            writer.add_page(att_page)
+                    except:
+                        pass
 
             final_buf = io.BytesIO()
             writer.write(final_buf)
