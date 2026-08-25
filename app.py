@@ -402,13 +402,13 @@ def generate_pdf():
             # Header height estimate: navy bar ~12mm + spacer 2mm + subline 5mm + spacer 2mm + rule 1mm + spacer 6mm = ~28mm
             header_h = 28*mm
 
-            for entry_num_a, entry in entries_with_attachments:
-                 raw_attachments = entry.get('attachments', []) or []
-                 attachments = [
-                     (a if isinstance(a, str) else a.get('path', ''))
+           for entry_num_a, entry in entries_with_attachments:
+                raw_attachments = entry.get('attachments', []) or []
+                attachments = [
+                    (a if isinstance(a, str) else a.get('path', ''))
                     for a in raw_attachments
                     if (isinstance(a, str) or a.get('include', True))
-                 ]
+                ]
                 for path in attachments:
                     att_data = fetch_attachment(path)
                     if not att_data:
