@@ -133,7 +133,6 @@ def make_cover(student_name, principal_name, office, period, num_entries, total_
     return story
 
 def make_tally_table(entries_subset, label=None):
-    """Build a single tally table for a subset of entries"""
     cat_map = {
         "Cadastral Survey (Boundary Reopening)":"Cadastral",
         "Cadastral Survey (Boundary Survey)":"Cadastral",
@@ -148,7 +147,6 @@ def make_tally_table(entries_subset, label=None):
         cat_totals[cat] = cat_totals.get(cat,0) + hrs
     grand = sum(float(e.get('total_hours',0) or 0) for e in entries_subset)
     def fh(n): return int(n) if n==int(n) else round(n,1)
-
     items = []
     if label:
         items.append(Paragraph(label, S('tlbl', fontSize=10, fontName='Helvetica-Bold', textColor=BLUE, spaceBefore=8, spaceAfter=4)))
@@ -175,9 +173,7 @@ def make_tally(entries):
     story.append(Paragraph("TALLY OF HOURS", S('th', fontSize=9, fontName='Helvetica-Bold', textColor=BLUE, spaceBefore=10, spaceAfter=5, letterSpacing=1.5)))
     story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
     story.append(Spacer(1, 4*mm))
-
-    # Group entries by period
-    from collections import defaultdict, OrderedDict
+    from collections import OrderedDict
     period_entries = OrderedDict()
     for e in entries:
         lbl = get_period_label(e.get('date',''))
@@ -185,8 +181,6 @@ def make_tally(entries):
             if lbl not in period_entries:
                 period_entries[lbl] = []
             period_entries[lbl].append(e)
-
-    # If multiple periods, show per-period tallies
     if len(period_entries) > 1:
         for period_lbl, p_entries in period_entries.items():
             story += make_tally_table(p_entries, label=f"Period: {period_lbl}")
@@ -195,7 +189,6 @@ def make_tally(entries):
         story += make_tally_table(entries, label="Combined Total")
     else:
         story += make_tally_table(entries)
-
     story.append(PageBreak())
     return story
 
@@ -298,13 +291,10 @@ def make_appendix_cover():
     return items
 
 def make_appendix_header(entry_num, entry):
-    """Navy header bar for each appendix page"""
     job_type  = entry.get('job_type', '')
     prop_desc = entry.get('property_desc', '—')
     title_ref = entry.get('title_ref', '—')
     items = []
-
-    # Navy bar: Entry No. X  |  Property Description
     header = Table([[
         Paragraph(f"Entry No. {entry_num}", S('ahl', fontSize=11, fontName='Helvetica-Bold', textColor=WHITE)),
         Paragraph(prop_desc, S('ahr', fontSize=11, fontName='Helvetica-Bold', textColor=WHITE, alignment=TA_RIGHT))
@@ -316,8 +306,6 @@ def make_appendix_header(entry_num, entry):
     ]))
     items.append(header)
     items.append(Spacer(1, 2*mm))
-
-    # Sub line: Job Type  ·  Vol. Fol.
     items.append(Paragraph(
         f"{job_type}  ·  {title_ref}",
         S('ameta', fontSize=10, fontName='Helvetica', textColor=MUTED, spaceAfter=0)
@@ -393,16 +381,12 @@ def generate_pdf():
             story.append(PageBreak())
             story += make_appendix_cover()
 
-            # Page dimensions for scaling
-            page_w = A4[0] - 40*mm   # usable width
-            page_h = A4[1] - 60*mm   # usable height (leaving room for header)
-
+            page_w = A4[0] - 40*mm
+            page_h = A4[1] - 60*mm
+            header_h = 28*mm
             pdf_attachments = []
 
-            # Header height estimate: navy bar ~12mm + spacer 2mm + subline 5mm + spacer 2mm + rule 1mm + spacer 6mm = ~28mm
-            header_h = 28*mm
-
-           for entry_num_a, entry in entries_with_attachments:
+            for entry_num_a, entry in entries_with_attachments:
                 raw_attachments = entry.get('attachments', []) or []
                 attachments = [
                     (a if isinstance(a, str) else a.get('path', ''))
@@ -416,7 +400,6 @@ def generate_pdf():
                     filename = path.split('/')[-1]
 
                     if is_image(path):
-                        # Header + image on same page, image constrained to space below header
                         img_avail_h = page_h - header_h
                         story += make_appendix_header(entry_num_a, entry)
                         try:
@@ -457,7 +440,6 @@ def generate_pdf():
 
             for entry_num_a, entry, pdf_data in pdf_attachments:
                 try:
-                    # Build a header-only page to insert BEFORE the plan pages
                     hdr_buf = io.BytesIO()
                     hdr_doc = SimpleDocTemplate(hdr_buf, pagesize=A4,
                         leftMargin=20*mm, rightMargin=20*mm,
@@ -465,9 +447,7 @@ def generate_pdf():
                     hdr_doc.build(make_appendix_header(entry_num_a, entry))
                     hdr_buf.seek(0)
                     hdr_reader = PdfReader(hdr_buf)
-                    # Add header page first
                     writer.add_page(hdr_reader.pages[0])
-                    # Then add all plan pages as-is, full page, no overlap
                     att_reader = PdfReader(io.BytesIO(pdf_data))
                     for att_page in att_reader.pages:
                         writer.add_page(att_page)
