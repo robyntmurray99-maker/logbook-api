@@ -403,7 +403,7 @@ def generate_pdf():
             header_h = 28*mm
 
             for entry_num_a, entry in entries_with_attachments:
-                attachments = entry.get('attachments', []) or []
+                raw_attachments = entry.get('attachments', []) or [] attachments = [     (a if isinstance(a, str) else a.get('path',''))     for a in raw_attachments     if (isinstance(a, str) or a.get('include', True)) ]
                 for path in attachments:
                     att_data = fetch_attachment(path)
                     if not att_data:
